@@ -516,6 +516,26 @@ void CollisionSpace::UpdateGroup(const std::string& group_name)
     m_scm->UpdateGroup(group_name);
 }
 
+void CollisionSpace::SetFCLObjectOOI(fcl::CollisionObject* ooi)
+{
+    m_scm->SetFCLObjectOOI(ooi);
+}
+
+void CollisionSpace::AddFCLMovableObstacle(fcl::CollisionObject* obs)
+{
+    m_scm->AddFCLMovableObstacle(obs);
+}
+
+void CollisionSpace::RemoveFCLMovableObstacle(fcl::CollisionObject* obs)
+{
+    m_scm->RemoveFCLMovableObstacle(obs);
+}
+
+void CollisionSpace::SetupFCL()
+{
+    m_scm->SetupFCL();
+}
+
 /// \brief Initialize the Collision Space
 /// \param urdf_string String description of the robot in URDF format
 /// \param config Collision model configuration

@@ -221,6 +221,10 @@ public:
     ///@}
 
     void UpdateGroup(const std::string& group_name);
+    void SetFCLObjectOOI(fcl::CollisionObject* ooi);
+    void AddFCLMovableObstacle(fcl::CollisionObject* obs);
+    void RemoveFCLMovableObstacle(fcl::CollisionObject* obs);
+    void SetupFCL();
 
 public:
 

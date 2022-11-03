@@ -49,6 +49,8 @@
 #include <sbpl_collision_checking/robot_collision_state.h>
 #include <sbpl_collision_checking/types.h>
 
+#include <fcl/broadphase/broadphase.h>
+
 namespace smpl {
 namespace collision {
 
@@ -134,6 +136,10 @@ public:
     // TODO: detailed checks
 
     void UpdateGroup(const std::string& group_name);
+    void SetFCLObjectOOI(fcl::CollisionObject* ooi);
+    void AddFCLMovableObstacle(fcl::CollisionObject* obs);
+    void RemoveFCLMovableObstacle(fcl::CollisionObject* obs);
+    void SetupFCL();
 
 private:
 
@@ -269,6 +275,10 @@ private:
     bool getRobotAttachedBodySpheresStateCollisionDetails(
         const AllowedCollisionsInterface& aci,
         CollisionDetails& details);
+
+    fcl::BroadPhaseCollisionManager* m_fcl_immov = nullptr;
+    fcl::CollisionObject* m_fcl_ooi = nullptr;
+    bool checkOOICollisionFCL();
 };
 
 } // namespace collision

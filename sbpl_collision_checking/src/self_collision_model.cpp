@@ -39,6 +39,69 @@
 // project includes
 #include <sbpl_collision_checking/collision_operations.h>
 
+#include <fcl/collision_data.h>
+#include <fcl/collision.h>
+#include <fcl/continuous_collision.h>
+#include <fcl/distance.h>
+#include <fcl/broadphase/broadphase_dynamic_AABB_tree.h>
+
+namespace fcl {
+
+/// @brief Collision data for use with the DefaultCollisionFunction. It stores
+/// the collision request and the result given by collision algorithm (and
+/// stores the conclusion of whether further evaluation of the broadphase
+/// collision manager has been deemed unnecessary).
+struct DefaultCollisionData {
+  CollisionRequest request;
+  CollisionResult result;
+
+  /// If `true`, requests that the broadphase evaluation stop.
+  bool done{false};
+};
+
+/// @brief Provides a simple callback for the collision query in the
+/// BroadPhaseCollisionManager. It assumes the `data` parameter is non-null and
+/// points to an instance of DefaultCollisionData. It simply invokes the
+/// `collide()` method on the culled pair of geometries and stores the results
+/// in the data's CollisionResult instance.
+///
+/// This callback will cause the broadphase evaluation to stop if:
+///   - the collision requests _disables_ cost _and_
+///   - the collide() reports a collision for the culled pair, _and_
+///   - we've reported the number of contacts requested in the CollisionRequest.
+///
+/// For a given instance of DefaultCollisionData, if broadphase evaluation has
+/// already terminated (i.e., DefaultCollisionFunction() returned `true`),
+/// subsequent invocations with the same instance of DefaultCollisionData will
+/// return immediately, requesting termination of broadphase evaluation (i.e.,
+/// return `true`).
+///
+/// @param o1   The first object in the culled pair.
+/// @param o2   The second object in the culled pair.
+/// @param data A non-null pointer to a DefaultCollisionData instance.
+/// @return `true` if the broadphase evaluation should stop.
+/// @tparam S   The scalar type with which the computation will be performed.
+bool DefaultCollisionFunction(CollisionObject* o1, CollisionObject* o2,
+                              void* data) {
+  assert(data != nullptr);
+  auto* collision_data = static_cast<DefaultCollisionData*>(data);
+  const CollisionRequest& request = collision_data->request;
+  CollisionResult& result = collision_data->result;
+
+  if(collision_data->done) return true;
+
+  collide(o1, o2, request, result);
+
+  if (!request.enable_cost && result.isCollision() &&
+      result.numContacts() >= request.num_max_contacts) {
+    collision_data->done = true;
+  }
+
+  return collision_data->done;
+}
+
+} // namespace fcl
+
 namespace smpl {
 namespace collision {
 
@@ -412,6 +475,55 @@ void SelfCollisionModel::UpdateGroup(const std::string& group_name)
     updateGroup(gidx);
 }
 
+void SelfCollisionModel::SetFCLObjectOOI(fcl::CollisionObject* ooi)
+{
+    m_fcl_ooi = ooi;
+}
+
+void SelfCollisionModel::AddFCLMovableObstacle(fcl::CollisionObject* obs)
+{
+    if (m_fcl_immov == nullptr) {
+        m_fcl_immov = new fcl::DynamicAABBTreeCollisionManager();
+    }
+    m_fcl_immov->registerObject(obs);
+}
+
+void SelfCollisionModel::RemoveFCLMovableObstacle(fcl::CollisionObject* obs)
+{
+    m_fcl_immov->unregisterObject(obs);
+}
+
+void SelfCollisionModel::SetupFCL()
+{
+    m_fcl_immov->setup();
+}
+
+bool SelfCollisionModel::checkOOICollisionFCL()
+{
+    if (m_fcl_ooi == nullptr || m_fcl_immov == nullptr) {
+        return false;
+    }
+
+    auto ooi_T = m_abcs.attachedBodyTransform("att_obj");
+
+    fcl::Vec3f t(ooi_T.translation().x(), ooi_T.translation().y(), ooi_T.translation().z());
+    Eigen::Quaterniond q_eigen(ooi_T.rotation());
+    fcl::Quaternion3f q_fcl(q_eigen.w(), q_eigen.x(), q_eigen.y(), q_eigen.z());
+    fcl::Transform3f pose;
+    pose.setTranslation(t);
+    pose.setQuatRotation(q_fcl);
+    // pose.setIdentity();
+    // T.setValue(ooi_T.translation().x(), ooi_T.translation().y(), ooi_T.translation().z());
+    // pose.setTranslation(T);
+
+    m_fcl_ooi->setTransform(pose);
+    m_fcl_ooi->computeAABB();
+
+    fcl::DefaultCollisionData collision_data;
+    m_fcl_immov->collide(m_fcl_ooi, &collision_data, fcl::DefaultCollisionFunction);
+    return !collision_data.result.isCollision();
+}
+
 /// Switch to checking for a new collision group
 ///
 /// Removes voxels from groups that are inside the new collision group and add
@@ -679,7 +791,12 @@ bool SelfCollisionModel::checkAttachedBodyVoxelsStateCollisions(
         q.push_back(s);
     }
 
-    return CheckVoxelsCollisions(m_abcs, q, *m_grid, m_padding, dist);
+    if (!CheckVoxelsCollisions(m_abcs, q, *m_grid, m_padding, dist)) {
+        return checkOOICollisionFCL();
+    }
+    else {
+        return true;
+    }
 }
 
 bool SelfCollisionModel::checkRobotSpheresStateCollisions(double& dist)
