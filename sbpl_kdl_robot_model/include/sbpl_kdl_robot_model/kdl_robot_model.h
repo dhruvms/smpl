@@ -105,6 +105,10 @@ public:
     auto getExtension(size_t class_code) -> Extension* override;
     ///@}
 
+    void NormalizeAngles(KDLRobotModel* model, KDL::JntArray* q);
+    double GetSolverMinPosition(KDLRobotModel* model, int vidx);
+    bool getCount(int& count, int max_count, int min_count);
+
 public:
 
     ::urdf::Model m_urdf;

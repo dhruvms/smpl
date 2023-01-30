@@ -45,8 +45,8 @@
 
 namespace smpl {
 
-static
-bool getCount(int& count, int max_count, int min_count)
+// static
+bool KDLRobotModel::getCount(int& count, int max_count, int min_count)
 {
     if (count > 0) {
         if (-count >= min_count) {
@@ -201,8 +201,8 @@ auto KDLRobotModel::getPlanningLink() const -> const std::string&
     return m_tip_link;
 }
 
-static
-void NormalizeAngles(KDLRobotModel* model, KDL::JntArray* q)
+// static
+void KDLRobotModel::NormalizeAngles(KDLRobotModel* model, KDL::JntArray* q)
 {
     for (auto i = 0; i < model->jointVariableCount(); ++i) {
         if (model->vprops[i].continuous) {
@@ -211,8 +211,8 @@ void NormalizeAngles(KDLRobotModel* model, KDL::JntArray* q)
     }
 }
 
-static
-double GetSolverMinPosition(KDLRobotModel* model, int vidx)
+// static
+double KDLRobotModel::GetSolverMinPosition(KDLRobotModel* model, int vidx)
 {
     if (model->vprops[vidx].continuous) {
         return -M_PI;

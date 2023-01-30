@@ -5,6 +5,8 @@
 
 #include <kdl/chainjnttojacsolver.hpp>
 #include <kdl/jacobian.hpp>
+#include <kdl/chainiksolvervel_wdls.hpp>
+#include <kdl/chainiksolverpos_lma.hpp>
 
 namespace smpl {
 
@@ -41,11 +43,17 @@ public:
         const RobotState& jnt_positions,
         Eigen::MatrixXd& Jq);
 
+    bool computeIKPos(
+        const Eigen::Affine3d& pose,
+        const RobotState& start,
+        RobotState& solution);
+
     auto getExtension(size_t class_code) -> Extension* override;
 
 private:
 
-	std::unique_ptr<KDL::ChainIkSolverVel_pinv> m_cart_to_jnt_vel_solver;
+    std::unique_ptr<KDL::ChainIkSolverVel_wdls> m_cart_to_jnt_vel_solver;
+    std::unique_ptr<KDL::ChainIkSolverPos_LMA> m_ik_solver_pos;
     std::unique_ptr<KDL::ChainJntToJacSolver> m_Jq_solver;
 
 };
