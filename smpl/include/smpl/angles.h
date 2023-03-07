@@ -128,9 +128,21 @@ inline double unwind(double ai, double af)
 template <typename T>
 void get_euler_zyx(const Eigen::Matrix<T, 3, 3>& rot, T& y, T& p, T& r)
 {
-    y = std::atan2(rot(1, 0), rot(0, 0));
-    p  = std::atan2(-rot(2, 0), std::sqrt(rot(2, 1) * rot(2, 1) + rot(2, 2) * rot(2, 2)));
-    r = std::atan2(rot(2, 1), rot(2, 2));
+    T sy = sqrt(rot(0,0) * rot(0,0) +  rot(1,0) * rot(1,0));
+    bool singular = sy < 1e-6;
+
+    if (!singular)
+    {
+        y = std::atan2(rot(1, 0), rot(0, 0));
+        p = std::atan2(-rot(2, 0), sy);
+        r = std::atan2(rot(2, 1), rot(2, 2));
+    }
+    else
+    {
+        y = 0.0;
+        p = std::atan2(-rot(2, 0), sy);
+        r = std::atan2(rot(1, 2), rot(1, 1));
+    }
 }
 
 template <typename T>
