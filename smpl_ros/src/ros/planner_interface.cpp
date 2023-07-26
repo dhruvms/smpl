@@ -1114,8 +1114,29 @@ bool PlannerInterface::setGoal(const GoalConstraints& v_goal_constraints)
         return false;
     }
 
-    for (auto& h : m_heuristics) {
-        h.second->updateGoal(goal);
+    if (IsMultiPoseGoal(v_goal_constraints))
+    {
+        GoalConstraint pose_goal;
+        pose_goal.type = GoalType::XYZ_RPY_GOAL;
+        pose_goal.xyz_tolerance[0] = goal.xyz_tolerance[0];
+        pose_goal.xyz_tolerance[1] = goal.xyz_tolerance[1];
+        pose_goal.xyz_tolerance[2] = goal.xyz_tolerance[2];
+        pose_goal.rpy_tolerance[0] = goal.rpy_tolerance[0];
+        pose_goal.rpy_tolerance[1] = goal.rpy_tolerance[1];
+        pose_goal.rpy_tolerance[2] = goal.rpy_tolerance[2];
+
+        size_t idx = 0;
+        for (auto& h : m_heuristics)
+        {
+            pose_goal.pose = goal.poses[idx++];
+            h.second->updateGoal(pose_goal);
+        }
+    }
+    else
+    {
+        for (auto& h : m_heuristics) {
+            h.second->updateGoal(goal);
+        }
     }
 
     // set planner goal
@@ -1515,7 +1536,15 @@ bool PlannerInterface::reinitPlanner(const std::string& planner_id)
         if (heuristic_name.empty()) continue;
         SMPL_INFO_NAMED(PI_LOGGER, " -> Heuristic: %s", heuristic_name.c_str());
 
-        auto hait = m_heuristic_factories.find(heuristic_name);
+        std::string heuristic_name_temp = heuristic_name;
+        if (heuristic_name_temp.find("joint_distance") != std::string::npos) {
+            heuristic_name_temp = "joint_distance";
+        }
+        if (heuristic_name_temp.find("bfs") != std::string::npos) {
+            heuristic_name_temp = "bfs";
+        }
+
+        auto hait = m_heuristic_factories.find(heuristic_name_temp);
         if (hait == end(m_heuristic_factories)) {
             SMPL_ERROR("Unrecognized heuristic name '%s'", heuristic_name.c_str());
             return false;
